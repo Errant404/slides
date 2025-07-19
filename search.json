@@ -7,6 +7,13 @@
     "text": "Date\n\n\n\nTitle\n\n\n\n\n\n\n\n\nJul 16, 2025\n\n\nCapriccio: Scalable Threads for Internet Services\n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\nNo matching items"
   },
   {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "This site is based on Quarto websites.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites."
+  },
+  {
     "objectID": "capriccio/index.html#main-contribution",
     "href": "capriccio/index.html#main-contribution",
     "title": "Errant's Slides",
@@ -138,13 +145,6 @@
     "title": "Errant's Slides",
     "section": "Future Work",
     "text": "Future Work\n\nExtending Capriccio to work with multiple processors\nReducing the kernel crossings with batching asynchronous network I/O\nDisambiguate function pointers in stack allocation\nImproving resource-aware scheduling\n\nTracking variance in resource usage\nBetter detection of thrashing\n\n\n\nTODO: 继任者：Goroutine"
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "This site is based on Quarto websites.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites."
   },
   {
     "objectID": "index.html",
