@@ -1,0 +1,7 @@
+---
+title: "Home"
+---
+
+Here's a collection of the slides that accompanied my talk.
+
+You can view by clicking on “[List](list.qmd)” in the upper left corner.

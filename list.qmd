@@ -1,0 +1,10 @@
+---
+title: "List"
+listing:
+  contents: ./*/*
+  type: table
+  fields: [date, title]
+  filter-ui: false
+  sort-ui: false
+  sort: "date"
+---

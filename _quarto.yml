@@ -1,0 +1,26 @@
+project:
+  type: website
+
+website:
+  title: "Errant's Slides"
+  navbar:
+    left:
+      - href: list.qmd
+        text: List
+      - about.qmd
+    tools:
+      - icon: twitter
+        href: https://twitter.com/Errant_404
+      - icon: github
+        href: https://github.com/Errant404/slides
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+    toc: true
+
+execute:
+  freeze: auto
