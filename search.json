@@ -1,0 +1,156 @@
+[
+  {
+    "objectID": "list.html",
+    "href": "list.html",
+    "title": "List",
+    "section": "",
+    "text": "Date\n\n\n\nTitle\n\n\n\n\n\n\n\n\nJul 16, 2025\n\n\nCapriccio: Scalable Threads for Internet Services\n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\n \n\n\n \n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "capriccio/index.html#main-contribution",
+    "href": "capriccio/index.html#main-contribution",
+    "title": "Errant's Slides",
+    "section": "Main Contribution",
+    "text": "Main Contribution\n\nScalable user-level thread package\n\nAlternative to\n\nEvent-based models\nKernel-thread models\n\n\nScalability to 100,000 threads\nEfficient for Internet Servers\n\n\n这篇论文主要是讲了一个叫做 Capriccio 线程包，经过论文作者的精心设计，它是 Scalable 的，最大可以扩展到 10 万线程，在后面实验中，作者证明了它对 web 服务器（比如说 Apache）是高效的。 这篇论文还有一个很有意思的历史北京，它是对当时正在进行的所有基于事件的工作的反驳，这是 OSTEP 书上说的，我们后面也会介绍这段背景"
+  },
+  {
+    "objectID": "capriccio/index.html#key-features",
+    "href": "capriccio/index.html#key-features",
+    "title": "Errant's Slides",
+    "section": "Key Features",
+    "text": "Key Features\n\nScalability with user-level threads\n\nCooperative scheduling\nAsynchronous disk I/O\nEfficient thread operations - O(1)\n\nLinked stack management\nResource-aware scheduling\n\n\n这篇论文中，作者的核心方法可以分为三块。第一是通过用户态线程实现 Scalability，第二是实现一种高效的链式栈管理系统，第三是借助阻塞图引入了资源感知调度"
+  },
+  {
+    "objectID": "capriccio/index.html#outline",
+    "href": "capriccio/index.html#outline",
+    "title": "Errant's Slides",
+    "section": "Outline",
+    "text": "Outline\n\nRelated Work and “Debate”\nCapriccio Scalability with user-level threads\nLinked Stack Management\nResource-Aware Scheduling\n\n\n这是我今天讲 paper 的大纲"
+  },
+  {
+    "objectID": "capriccio/index.html#debate-event-based-side",
+    "href": "capriccio/index.html#debate-event-based-side",
+    "title": "Errant's Slides",
+    "section": "Debate – event-based side",
+    "text": "Debate – event-based side\n\nEvent-based arguments by Ousterhout (Why threads are bad?, 1996)\n\nEvents are more efficient (no context switching and locking overheads with threads)\nThreads - hard to program (deadlocks, synchronization)\nPoor thread support (portability, debugging)\n\nMany event-based implementation (Harvest, Flash, SEDA)\n\n\n学术界关于高并发场景下最佳编程模型的争论由来已久，其中线程与事件驱动模型之争尤为突出。Ousterhout 曾系统阐述事件驱动模型的诸多优势。 近年来，在可扩展服务器架构的研究中，事件驱动模型也得到广泛推崇，典型应用包括 Flash、Harvest 等互联网服务器，以及 SEDA、Ninja 等服务器基础架构。"
+  },
+  {
+    "objectID": "capriccio/index.html#debate-other-arguments",
+    "href": "capriccio/index.html#debate-other-arguments",
+    "title": "Errant's Slides",
+    "section": "Debate – other arguments",
+    "text": "Debate – other arguments\n\n\nNeutral argument by Lauer and Needham (On the duality of OS system structures, 1978)\n\nAny system constructed according to a model can have a direct counterpart in the other model\n\nPro-thread arguments by Behren, Condit, Brewer (Why events are bad?, 2003)\n\nGreater code readability\nNo “stack-ripping”\nSlow thread performance - implementation artifact\nHigh performance servers more sensitive to scheduling\n\n\n\n\n但事实真的如此吗？ 一种模型的优势往往天然成为另一种模型的劣势，关于哪种模型更优的争论由来已久。然而，H.C. Lauer 和 R. M. Needham 在 1978 年发表的实证研究中指出，这两种模型实际上互为对偶关系——基于任一模型构建的系统，都能在另一模型中找到对应实现。值得注意的是，论文中提出的模型具有理想化特征，现实中并不存在完全属于某一类别的系统。在实际系统底层，往往是两种模型的混合体，只有上层架构才体现特定模型特征。 依照 Lauer 和 Needham 提出的二元性论证传统，我们此前曾指出，事件表现出的所谓优势其实只是线程实现不佳的假象。因此，我们认为以往支持事件的论点更应理解为：针对特定应用的优化需求以及对高效线程运行时的追求。这两点正是推动 Capriccio 研发的核心动因。值得一提的是，Capriccio 调度器采用的阻塞图设计灵感直接来源于 SEDA 架构中的阶段划分和显式队列机制。 而相较于基于事件的模型，基于线程的模型的好处在于它更易理解，并且没有 stack-ripping（每当程序可能发生阻塞调用时，开发者就不得不拆分调用堆栈，转而通过回调函数创建闭包来触发后续操作）。 本文除了给出了一种基于用户态线程的模型之外，我认为最有价值的一点是它启发了我们对编程模型其本身的思考。"
+  },
+  {
+    "objectID": "capriccio/index.html#capriccio",
+    "href": "capriccio/index.html#capriccio",
+    "title": "Errant's Slides",
+    "section": "Capriccio",
+    "text": "Capriccio\n\n\nPhilosophy\n\nThread model is useful\nImprove implementation to remove barriers to scalability\n\nTechniques\n\nUser-level threads\nLinked stack management\nResource aware scheduling\n\nTools\n\nCompiler-analysis\nRun-time monitoring\n\n\n\n\n于是基于前面的观点，作者们设计了 Capriccio，它兼容目前的线程的接口，通过一系列技术手段提升应用在多线程情况下的性能，并且无需修改原程序的大部分代码。"
+  },
+  {
+    "objectID": "capriccio/index.html#why-user-level-threads",
+    "href": "capriccio/index.html#why-user-level-threads",
+    "title": "Errant's Slides",
+    "section": "Why user-level threads?",
+    "text": "Why user-level threads?\n\n\nDecoupling from the OS/kernel\n\nOS independence\nKernel variation\nAddress application-specific needs 1\n\nCooperative threading – more efficient synchronization\nLess “kernel crossing”\nMore efficient memory management\n\n\n\n那么为什么会用用户态线程呢？主要是有这些好处 它可以将应用和操作系统平台解耦，从而隐藏操作系统间的差异与变化，适应操作系统的快速发展。解耦使得上层的线程包能够灵活地利用内核的最新特性（如文中提到的新型异步I/O机制）来提升性能和可伸缩性，同时又不必被绑定在某个特定或发展缓慢的内核上。 内核线程无法针对特定应用定制调度算法。而用户级线程则不受此限制，其调度器可以与应用程序同步开发，实现更贴合应用需求的调度策略。 此外由于用户态线程采用的是协程调度，因此线程之间的同步非常容易；而且相较于系统级线程，线程切换不会陷入内核态，其本身也相较于内核态线程也要更为轻量\n\ne.g. take advantage of a new asynchronous I/O interface and the user-level thread scheduler can be built along with the application."
+  },
+  {
+    "objectID": "capriccio/index.html#implementation",
+    "href": "capriccio/index.html#implementation",
+    "title": "Errant's Slides",
+    "section": "Implementation",
+    "text": "Implementation\n\nNon-blocking wrappers for blocking I/O\nAsynchronous disk I/O where possible 1\nScheduling loop resembling an event-driven application\nCheap synchronization\nEfficient O(1) thread operations\n\n\n为了实现可伸缩的基本操作，Capriccio通过覆盖GNU libc存根函数在库级别拦截阻塞I/O调用。这些调用在内部被非阻塞等效项替代，允许线程包在线程启动I/O操作时保持控制。系统使用Edgar Toernig的协程库进行极快的上下文切换，当线程自愿让出时，并采用高效的算法，确保大多数线程管理函数的O(1)最坏情况运行时间。\n\nIf these mechanisms are not available, Capriccio falls back on the standard Unix poll() call for pollable descriptors and a pool of kernel threads for disk I/O."
+  },
+  {
+    "objectID": "capriccio/index.html#benchmarks",
+    "href": "capriccio/index.html#benchmarks",
+    "title": "Errant's Slides",
+    "section": "Benchmarks",
+    "text": "Benchmarks\n\n\n\n(left) Capriccio scales to 100,000 threads\n(right) Network I/O throughput with Capriccio only has 10% overhead over epoll\n\n\n\n图1展示了在生产者-消费者模型下，不同线程包（Capriccio, LinuxThreads, NPTL）的调度和同步效率。 图2通过一个管道测试来模拟网络I/O的可扩展性，比较了 Capriccio 与 LinuxThreads、NPTL 以及两种I/O模型（poll 和 epoll）的性能。"
+  },
+  {
+    "objectID": "capriccio/index.html#benchmarks-1",
+    "href": "capriccio/index.html#benchmarks-1",
+    "title": "Errant's Slides",
+    "section": "Benchmarks",
+    "text": "Benchmarks\n\n\n\nWith asynchronous I/O disk performance is comparable in Capriccio vs. other thread packages"
+  },
+  {
+    "objectID": "capriccio/index.html#disadvantages-of-user-level-threads",
+    "href": "capriccio/index.html#disadvantages-of-user-level-threads",
+    "title": "Errant's Slides",
+    "section": "Disadvantages of user-level threads",
+    "text": "Disadvantages of user-level threads\n\nNon-blocking wrappers of blocking I/O increase kernel crossings\nExtra overhead for function calls\nDifficult to integrate with multiple processor scheduling"
+  },
+  {
+    "objectID": "capriccio/index.html#linked-stacks",
+    "href": "capriccio/index.html#linked-stacks",
+    "title": "Errant's Slides",
+    "section": "Linked Stacks",
+    "text": "Linked Stacks\n \n\n\nProblem: Conservative stack allocations per thread are unsuitable for programs with many threads.\nSolution: Dynamic stack allocation with linked chunks alleviates VM pressure and improves paging behavior.\nMethod: Compile-time analysis and checkpoint injection into the code."
+  },
+  {
+    "objectID": "capriccio/index.html#linked-stacks-algorithm",
+    "href": "capriccio/index.html#linked-stacks-algorithm",
+    "title": "Errant's Slides",
+    "section": "Linked Stacks: Algorithm",
+    "text": "Linked Stacks: Algorithm\n\n\n\n\n\n\n\n\n\n\nEach node is a call site annotated with the maximum stack space for that call.\nCheckpoints must be inserted at each recursive frame and well-spaced call sites.\nCheckpoints determine whether to allocate a new stack chunk.\n\n\n\n\nIn the figure, the MaxPath parameter is 8."
+  },
+  {
+    "objectID": "capriccio/index.html#scheduling-blocking-graph",
+    "href": "capriccio/index.html#scheduling-blocking-graph",
+    "title": "Errant's Slides",
+    "section": "Scheduling: Blocking Graph",
+    "text": "Scheduling: Blocking Graph\n\n\n\nLessons from event systems\n\nBreak app into stages\nSchedule based on stage priorities \n\nCapriccio does this for threads\n\nDeduce stage with stack traces at blocking points\nPrioritize based on runtime information"
+  },
+  {
+    "objectID": "capriccio/index.html#resource-aware-scheduling",
+    "href": "capriccio/index.html#resource-aware-scheduling",
+    "title": "Errant's Slides",
+    "section": "Resource-Aware Scheduling",
+    "text": "Resource-Aware Scheduling\n\n\nTrack resources used along BG edges\n\nMemory, file descriptors, CPU\nPredict future from the past\n\nAlgorithm\n\nIncrease use when underutilized\nDecrease use near saturation\n\nAdvantages\n\nOperate near the knee w/o thrashing\nAutomatic admission control"
+  },
+  {
+    "objectID": "capriccio/index.html#pitfalls",
+    "href": "capriccio/index.html#pitfalls",
+    "title": "Errant's Slides",
+    "section": "Pitfalls",
+    "text": "Pitfalls\n\nMaximum capacity of a particular resource is difficult to determine\nThrashing is not easily detectable.\nNon-yielding threads lead to unfairness and starvation in cooperative scheduling.\nBlocking graphs are expensive to maintain (for Apache 2.0.44 stack trace overhead is 8% of execution time)."
+  },
+  {
+    "objectID": "capriccio/index.html#web-server-performance",
+    "href": "capriccio/index.html#web-server-performance",
+    "title": "Errant's Slides",
+    "section": "Web Server Performance",
+    "text": "Web Server Performance\n\n\n\nApache 2.0.44 on a 4x500 MHz Pentium server has 15% higher throughput with Capriccio."
+  },
+  {
+    "objectID": "capriccio/index.html#conclusion",
+    "href": "capriccio/index.html#conclusion",
+    "title": "Errant's Slides",
+    "section": "Conclusion",
+    "text": "Conclusion\n\n\nCapriccio demonstrates a user-level thread package that achieves\n\nHigh scalability\nEfficient stack management\nScheduling based on resource usage\n\nDrawbacks \n\nHigh overhead in stack tracing\nLack of sufficient multi-processor support"
+  },
+  {
+    "objectID": "capriccio/index.html#future-work",
+    "href": "capriccio/index.html#future-work",
+    "title": "Errant's Slides",
+    "section": "Future Work",
+    "text": "Future Work\n\nExtending Capriccio to work with multiple processors\nReducing the kernel crossings with batching asynchronous network I/O\nDisambiguate function pointers in stack allocation\nImproving resource-aware scheduling\n\nTracking variance in resource usage\nBetter detection of thrashing\n\n\n\nTODO: 继任者：Goroutine"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "This site is based on Quarto websites.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Home",
+    "section": "",
+    "text": "Here’s a collection of the slides that accompanied my talk.\nYou can view by clicking on “List” in the upper left corner."
+  }
+]
