@@ -1,5 +1,6 @@
 /*-- scss:defaults --*/
 $presentation-h1-font-size: 1.8em;
 $presentation-title-slide-text-align: center;
-$font-family-sans-serif: "Noto Sans", sans-serif;
+$font-family-sans-serif: "Noto Sans", "Noto Sans SC", sans-serif;
 /*-- scss:rules --*/
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100..900&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
