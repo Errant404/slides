@@ -1,10 +1,13 @@
 ---
 title: "List"
 listing:
-  contents: ./*/*
+  contents: .
   type: table
   fields: [date, title]
   filter-ui: false
-  sort-ui: false
-  sort: "date"
+  sort-ui: true
+  sort:
+    - "date desc"
+  exclude:
+    title: "{Home,About}"
 ---
