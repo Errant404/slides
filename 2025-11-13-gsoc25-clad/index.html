@@ -269,7 +269,7 @@
 </ul>
 </div>
 <div style="text-align: center;">
-<iframe src="https://godbolt.org/z/ETvY8x4Wh" width="1400" height="450" frameborder="0" allowfullscreen=""></iframe>
+<iframe src="https://godbolt.org/z/ETvY8x4Wh" width="1400" height="400" frameborder="0" allowfullscreen=""></iframe>
 </div>
 </section>
 <section id="forward-mode-1491" class="slide level2">
@@ -298,13 +298,42 @@
 </section>
 <section id="reverse-mode-clang-ast-transformations" class="slide level2">
 <h2>Reverse Mode — Clang AST transformations</h2>
-<div style="font-size: 85%;">
+<div style="font-size: 75%;">
 <ul>
-<li><p>The previous VisitForStmt approach was too invasive for <code>omp for</code>; we implement a dedicated <code>DifferentiateCanonicalLoop</code> for OpenMP loops.</p></li>
+<li>The previous VisitForStmt method was too invasive for <code>omp for</code>; we implement a dedicated <code>DifferentiateCanonicalLoop</code> for OpenMP loops.</li>
+</ul>
+</div>
+<div style="font-size: 70%;">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-code-line-numbers="|10|14"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a></a><span class="co">// auto fn_grad = clad::gradient(sum_of_squares);</span></span>
+<span id="cb4-2"><a></a><span class="co">// fn_grad.dump();</span></span>
+<span id="cb4-3"><a></a><span class="dt">void</span> sum_of_squares_grad<span class="op">(</span><span class="at">const</span> <span class="dt">double</span> <span class="op">*</span>x<span class="op">,</span> <span class="dt">int</span> n<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>_d_x<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>_d_n<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-4"><a></a>    <span class="dt">int</span> _d_i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb4-5"><a></a>    <span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb4-6"><a></a>    <span class="dt">double</span> _d_total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
+<span id="cb4-7"><a></a>    <span class="dt">double</span> total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
+<span id="cb4-8"><a></a>    <span class="dt">unsigned</span> <span class="dt">long</span> _t0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb4-9"><a></a>    <span class="cf">for</span> <span class="op">(</span>i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> n<span class="op">;</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb4-10"><a></a>        _t0<span class="op">++;</span></span>
+<span id="cb4-11"><a></a>        total <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb4-12"><a></a>    <span class="op">}</span></span>
+<span id="cb4-13"><a></a>    _d_total <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb4-14"><a></a>    <span class="cf">for</span> <span class="op">(;</span> _t0<span class="op">;</span> _t0<span class="op">--)</span> <span class="op">{</span></span>
+<span id="cb4-15"><a></a>        i<span class="op">--;</span></span>
+<span id="cb4-16"><a></a>        <span class="op">{</span></span>
+<span id="cb4-17"><a></a>            <span class="dt">double</span> _r_d0 <span class="op">=</span> _d_total<span class="op">;</span></span>
+<span id="cb4-18"><a></a>            _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> _r_d0 <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb4-19"><a></a>            _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> _r_d0<span class="op">;</span></span>
+<span id="cb4-20"><a></a>        <span class="op">}</span></span>
+<span id="cb4-21"><a></a>    <span class="op">}</span></span>
+<span id="cb4-22"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="reverse-mode-clang-ast-transformations-1" class="slide level2">
+<h2>Reverse Mode — Clang AST transformations</h2>
+<ul>
 <li><p>It should be noted that, for Clang’s OpenMP implementation, we need to capture the related variables when building <code>DeclRefExpr</code> (which corresponds to the <code>CaptureStmt</code>’s subnodes in the Clang AST).</p>
 <p>So we also need visit twice to generate two OpenMP regions and their capture lists: one for the forward pass, one for the reverse pass.</p></li>
 </ul>
-</div>
 </section>
 <section id="reverse-mode-scope-conversion" class="slide level2">
 <h2>Reverse Mode — Scope conversion</h2>
@@ -322,48 +351,51 @@
 </ul></li>
 </ul>
 </div>
+<div style="font-size: 85%;">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb5-1"><a></a><span class="dt">void</span> clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dt">int</span> lo<span class="op">,</span> <span class="dt">int</span> hi<span class="op">,</span> <span class="dt">int</span> stride<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadlo<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadhi<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
 </section>
 <section id="reverse-mode-1641" class="slide level2">
 <h2>Reverse Mode (<a href="https://github.com/vgvassilev/clad/pull/1641">#1641</a>)</h2>
 <p>The resulting generated code:</p>
 <div style="font-size: 90%;">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a></a><span class="co">// auto fn_grad = clad::gradient(parallel_sum_of_squares);</span></span>
-<span id="cb4-2"><a></a><span class="co">// fn_grad.dump();</span></span>
-<span id="cb4-3"><a></a><span class="dt">void</span> parallel_sum_of_squares_grad<span class="op">(</span><span class="at">const</span> <span class="dt">double</span> <span class="op">*</span>x<span class="op">,</span> <span class="dt">int</span> n<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>_d_x<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>_d_n<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb4-4"><a></a>    <span class="dt">double</span> _d_total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
-<span id="cb4-5"><a></a>    <span class="dt">double</span> total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
-<span id="cb4-6"><a></a>    <span class="pp">#pragma omp parallel reduction(+: total)</span></span>
-<span id="cb4-7"><a></a>        <span class="op">{</span></span>
-<span id="cb4-8"><a></a>            <span class="dt">int</span> _t_chunklo0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb4-9"><a></a>            <span class="dt">int</span> _t_chunkhi0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb4-10"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo0<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi0<span class="op">);</span></span>
-<span id="cb4-11"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunklo0<span class="op">;</span> i <span class="op">&lt;=</span> _t_chunkhi0<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
-<span id="cb4-12"><a></a>                total <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
-<span id="cb4-13"><a></a>            <span class="op">}</span></span>
-<span id="cb4-14"><a></a>        <span class="op">}</span></span>
-<span id="cb4-15"><a></a>    _d_total <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb4-16"><a></a>    <span class="pp">#pragma omp parallel private(total) firstprivate(_d_total)</span></span>
-<span id="cb4-17"><a></a>        <span class="op">{</span></span>
-<span id="cb4-18"><a></a>            <span class="dt">int</span> _t_chunklo1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb4-19"><a></a>            <span class="dt">int</span> _t_chunkhi1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb4-20"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo1<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi1<span class="op">);</span></span>
-<span id="cb4-21"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunkhi1<span class="op">;</span> i <span class="op">&gt;=</span> _t_chunklo1<span class="op">;</span> i <span class="op">-=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
-<span id="cb4-22"><a></a>                <span class="op">{</span></span>
-<span id="cb4-23"><a></a>                    <span class="dt">double</span> _r_d0 <span class="op">=</span> _d_total<span class="op">;</span></span>
-<span id="cb4-24"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> _r_d0 <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
-<span id="cb4-25"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> _r_d0<span class="op">;</span></span>
-<span id="cb4-26"><a></a>                <span class="op">}</span></span>
-<span id="cb4-27"><a></a>            <span class="op">}</span></span>
-<span id="cb4-28"><a></a>        <span class="op">}</span></span>
-<span id="cb4-29"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a></a><span class="co">// auto fn_grad = clad::gradient(parallel_sum_of_squares);</span></span>
+<span id="cb6-2"><a></a><span class="co">// fn_grad.dump();</span></span>
+<span id="cb6-3"><a></a><span class="dt">void</span> parallel_sum_of_squares_grad<span class="op">(</span><span class="at">const</span> <span class="dt">double</span> <span class="op">*</span>x<span class="op">,</span> <span class="dt">int</span> n<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>_d_x<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>_d_n<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-4"><a></a>    <span class="dt">double</span> _d_total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
+<span id="cb6-5"><a></a>    <span class="dt">double</span> total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
+<span id="cb6-6"><a></a>    <span class="pp">#pragma omp parallel reduction(+: total)</span></span>
+<span id="cb6-7"><a></a>        <span class="op">{</span></span>
+<span id="cb6-8"><a></a>            <span class="dt">int</span> _t_chunklo0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb6-9"><a></a>            <span class="dt">int</span> _t_chunkhi0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb6-10"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo0<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi0<span class="op">);</span></span>
+<span id="cb6-11"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunklo0<span class="op">;</span> i <span class="op">&lt;=</span> _t_chunkhi0<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-12"><a></a>                total <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb6-13"><a></a>            <span class="op">}</span></span>
+<span id="cb6-14"><a></a>        <span class="op">}</span></span>
+<span id="cb6-15"><a></a>    _d_total <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb6-16"><a></a>    <span class="pp">#pragma omp parallel private(total) firstprivate(_d_total)</span></span>
+<span id="cb6-17"><a></a>        <span class="op">{</span></span>
+<span id="cb6-18"><a></a>            <span class="dt">int</span> _t_chunklo1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb6-19"><a></a>            <span class="dt">int</span> _t_chunkhi1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb6-20"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo1<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi1<span class="op">);</span></span>
+<span id="cb6-21"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunkhi1<span class="op">;</span> i <span class="op">&gt;=</span> _t_chunklo1<span class="op">;</span> i <span class="op">-=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-22"><a></a>                <span class="op">{</span></span>
+<span id="cb6-23"><a></a>                    <span class="dt">double</span> _r_d0 <span class="op">=</span> _d_total<span class="op">;</span></span>
+<span id="cb6-24"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> _r_d0 <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb6-25"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> _r_d0<span class="op">;</span></span>
+<span id="cb6-26"><a></a>                <span class="op">}</span></span>
+<span id="cb6-27"><a></a>            <span class="op">}</span></span>
+<span id="cb6-28"><a></a>        <span class="op">}</span></span>
+<span id="cb6-29"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="future-work" class="slide level2">
 <h2>Future Work</h2>
 <ul>
-<li>Support dynamic schedules (record executed chunks at runtime and replay), closing perf gaps for non-static scheduling.</li>
-<li>Support more OpenMP clauses and directives.</li>
-<li>Enable OpenMP offloading to target accelerators (e.g., GPUs).</li>
+<li><p>Support dynamic schedules (record executed chunks at runtime and replay).</p></li>
+<li><p>Support more OpenMP clauses and directives.</p>
+<p>We can even enable OpenMP offloading to target accelerators (e.g., GPUs).</p></li>
 </ul>
 </section>
 <section id="thank-you" class="title-slide slide level1 center" style="text-align: center;">

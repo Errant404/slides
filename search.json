@@ -60,7 +60,14 @@
     "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations",
     "title": "Errant's Slides",
     "section": "Reverse Mode — Clang AST transformations",
-    "text": "Reverse Mode — Clang AST transformations\n\n\nThe previous VisitForStmt approach was too invasive for omp for; we implement a dedicated DifferentiateCanonicalLoop for OpenMP loops.\nIt should be noted that, for Clang’s OpenMP implementation, we need to capture the related variables when building DeclRefExpr (which corresponds to the CaptureStmt’s subnodes in the Clang AST).\nSo we also need visit twice to generate two OpenMP regions and their capture lists: one for the forward pass, one for the reverse pass."
+    "text": "Reverse Mode — Clang AST transformations\n\n\nThe previous VisitForStmt method was too invasive for omp for; we implement a dedicated DifferentiateCanonicalLoop for OpenMP loops.\n\n\n\n// auto fn_grad = clad::gradient(sum_of_squares);\n// fn_grad.dump();\nvoid sum_of_squares_grad(const double *x, int n, double *_d_x, int *_d_n) {\n    int _d_i = 0;\n    int i = 0;\n    double _d_total = 0.;\n    double total = 0.;\n    unsigned long _t0 = 0;\n    for (i = 0; i &lt; n; i++) {\n        _t0++;\n        total += x[i] * x[i];\n    }\n    _d_total += 1;\n    for (; _t0; _t0--) {\n        i--;\n        {\n            double _r_d0 = _d_total;\n            _d_x[i] += _r_d0 * x[i];\n            _d_x[i] += x[i] * _r_d0;\n        }\n    }\n}"
+  },
+  {
+    "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations-1",
+    "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations-1",
+    "title": "Errant's Slides",
+    "section": "Reverse Mode — Clang AST transformations",
+    "text": "Reverse Mode — Clang AST transformations\n\nIt should be noted that, for Clang’s OpenMP implementation, we need to capture the related variables when building DeclRefExpr (which corresponds to the CaptureStmt’s subnodes in the Clang AST).\nSo we also need visit twice to generate two OpenMP regions and their capture lists: one for the forward pass, one for the reverse pass."
   },
   {
     "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-scope-conversion",
@@ -74,7 +81,7 @@
     "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-intermediates-and-schedule-replay",
     "title": "Errant's Slides",
     "section": "Reverse Mode — Intermediates and schedule replay",
-    "text": "Reverse Mode — Intermediates and schedule replay\n\n\nIntermediates require tapes; the tape itself must become private to each thread; so we make these threadprivate.\nFor data consistency, we must ensure that the parallel scheduling of the backward propagation strictly reproduces the thread–task allocation of the forward propagation. To achieve this, we reverse the schedule while preserving chunk boundaries by a small runtime helper:\n\nForward pass: each thread computes its static chunk from thread ID and executes normally.\nReverse pass: the same helper returns identical chunks, then we iterate the chunk in reverse order."
+    "text": "Reverse Mode — Intermediates and schedule replay\n\n\nIntermediates require tapes; the tape itself must become private to each thread; so we make these threadprivate.\nFor data consistency, we must ensure that the parallel scheduling of the backward propagation strictly reproduces the thread–task allocation of the forward propagation. To achieve this, we reverse the schedule while preserving chunk boundaries by a small runtime helper:\n\nForward pass: each thread computes its static chunk from thread ID and executes normally.\nReverse pass: the same helper returns identical chunks, then we iterate the chunk in reverse order.\n\n\n\n\nvoid clad::GetStaticSchedule(int lo, int hi, int stride, int* threadlo, int* threadhi)"
   },
   {
     "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-1641",
@@ -88,7 +95,7 @@
     "href": "2025-11-13-gsoc25-clad/index.html#future-work",
     "title": "Errant's Slides",
     "section": "Future Work",
-    "text": "Future Work\n\nSupport dynamic schedules (record executed chunks at runtime and replay), closing perf gaps for non-static scheduling.\nSupport more OpenMP clauses and directives.\nEnable OpenMP offloading to target accelerators (e.g., GPUs)."
+    "text": "Future Work\n\nSupport dynamic schedules (record executed chunks at runtime and replay).\nSupport more OpenMP clauses and directives.\nWe can even enable OpenMP offloading to target accelerators (e.g., GPUs)."
   },
   {
     "objectID": "list.html",
