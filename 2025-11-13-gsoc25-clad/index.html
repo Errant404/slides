@@ -299,15 +299,15 @@
 <span id="cb3-13"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="reverse-mode-clang-ast-transformations" class="slide level2">
-<h2>Reverse Mode — Clang AST transformations</h2>
+<section id="reverse-mode-clang-ast" class="slide level2">
+<h2>Reverse Mode — Clang AST</h2>
 <div style="font-size: 75%;">
 <ul>
 <li>The previous VisitForStmt method was too invasive for <code>omp for</code>; we implement a dedicated <code>DifferentiateCanonicalLoop</code> for OpenMP loops.</li>
 </ul>
 </div>
 <div style="font-size: 70%;">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-code-line-numbers="|10|14"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a></a><span class="co">// auto fn_grad = clad::gradient(sum_of_squares);</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-code-line-numbers="|10,14"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a></a><span class="co">// auto fn_grad = clad::gradient(sum_of_squares);</span></span>
 <span id="cb4-2"><a></a><span class="co">// fn_grad.dump();</span></span>
 <span id="cb4-3"><a></a><span class="dt">void</span> sum_of_squares_grad<span class="op">(</span><span class="at">const</span> <span class="dt">double</span> <span class="op">*</span>x<span class="op">,</span> <span class="dt">int</span> n<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>_d_x<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>_d_n<span class="op">)</span> <span class="op">{</span></span>
 <span id="cb4-4"><a></a>    <span class="dt">int</span> _d_i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
@@ -331,12 +331,49 @@
 <span id="cb4-22"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="reverse-mode-clang-ast-transformations-1" class="slide level2">
-<h2>Reverse Mode — Clang AST transformations</h2>
+<section id="reverse-mode-clang-ast-1" class="slide level2 scrollable">
+<h2>Reverse Mode — Clang AST</h2>
+<div style="font-size: 50%;">
 <ul>
 <li><p>It should be noted that, for Clang’s OpenMP implementation, we need to capture the related variables when building <code>DeclRefExpr</code> (which corresponds to the <code>CaptureStmt</code>’s subnodes in the Clang AST).</p>
 <p>So we also need visit twice to generate two OpenMP regions and their capture lists: one for the forward pass, one for the reverse pass.</p></li>
 </ul>
+</div>
+<div style="font-size: 70%;">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb5-1"><a></a>CLAD_COMPAT_CLANG19_SemaOpenMP<span class="op">(</span><span class="va">m_Sema</span><span class="op">).</span>ActOnOpenMPRegionStart<span class="op">(</span>OMPD_parallel<span class="op">,</span> <span class="kw">nullptr</span><span class="op">);</span></span>
+<span id="cb5-2"><a></a>StmtDiff BodyDiff<span class="op">;</span></span>
+<span id="cb5-3"><a></a><span class="op">{</span></span>
+<span id="cb5-4"><a></a>    Sema<span class="op">::</span>CompoundScopeRAII CompoundScope<span class="op">(</span><span class="va">m_Sema</span><span class="op">);</span></span>
+<span id="cb5-5"><a></a>    <span class="cf">if</span> <span class="op">(</span>isOpenMPLoopDirective<span class="op">(</span>D<span class="op">-&gt;</span>getDirectiveKind<span class="op">()))</span> <span class="op">{</span></span>
+<span id="cb5-6"><a></a>        <span class="at">const</span> <span class="kw">auto</span><span class="op">*</span> FS <span class="op">=</span> cast<span class="op">&lt;</span>ForStmt<span class="op">&gt;(</span>CS<span class="op">);</span></span>
+<span id="cb5-7"><a></a>        BodyDiff <span class="op">=</span> DifferentiateCanonicalLoop<span class="op">(</span>FS<span class="op">);</span></span>
+<span id="cb5-8"><a></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb5-9"><a></a>        BodyDiff <span class="op">=</span> Visit<span class="op">(</span>CS<span class="op">);</span></span>
+<span id="cb5-10"><a></a>    <span class="op">}</span></span>
+<span id="cb5-11"><a></a><span class="op">}</span></span>
+<span id="cb5-12"><a></a>Stmt<span class="op">*</span> Forward <span class="op">=</span> CLAD_COMPAT_CLANG19_SemaOpenMP<span class="op">(</span><span class="va">m_Sema</span><span class="op">)</span></span>
+<span id="cb5-13"><a></a>                    <span class="op">.</span>ActOnOpenMPRegionEnd<span class="op">(</span>BodyDiff<span class="op">.</span>getStmt<span class="op">(),</span> OrigClauses<span class="op">)</span></span>
+<span id="cb5-14"><a></a>                    <span class="op">.</span>get<span class="op">();</span></span>
+<span id="cb5-15"><a></a></span>
+<span id="cb5-16"><a></a>CLAD_COMPAT_CLANG19_SemaOpenMP<span class="op">(</span><span class="va">m_Sema</span><span class="op">).</span>ActOnOpenMPRegionStart<span class="op">(</span>OMPD_parallel<span class="op">,</span> <span class="kw">nullptr</span><span class="op">);</span></span>
+<span id="cb5-17"><a></a><span class="co">// Visit twice, but use only the result of the first visit, for capture variables only.</span></span>
+<span id="cb5-18"><a></a><span class="op">{</span></span>
+<span id="cb5-19"><a></a>    Sema<span class="op">::</span>CompoundScopeRAII CompoundScope<span class="op">(</span><span class="va">m_Sema</span><span class="op">);</span></span>
+<span id="cb5-20"><a></a>    Stmts temp<span class="op">;</span></span>
+<span id="cb5-21"><a></a>    <span class="va">m_Globals</span><span class="op">.</span>swap<span class="op">(</span>temp<span class="op">);</span></span>
+<span id="cb5-22"><a></a>    <span class="cf">if</span> <span class="op">(</span>isOpenMPLoopDirective<span class="op">(</span>D<span class="op">-&gt;</span>getDirectiveKind<span class="op">()))</span> <span class="op">{</span></span>
+<span id="cb5-23"><a></a>        <span class="at">const</span> <span class="kw">auto</span><span class="op">*</span> FS <span class="op">=</span> cast<span class="op">&lt;</span>ForStmt<span class="op">&gt;(</span>CS<span class="op">);</span></span>
+<span id="cb5-24"><a></a>        DifferentiateCanonicalLoop<span class="op">(</span>FS<span class="op">);</span></span>
+<span id="cb5-25"><a></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb5-26"><a></a>        Visit<span class="op">(</span>CS<span class="op">);</span></span>
+<span id="cb5-27"><a></a>    <span class="op">}</span></span>
+<span id="cb5-28"><a></a>    <span class="va">m_Globals</span><span class="op">.</span>swap<span class="op">(</span>temp<span class="op">);</span></span>
+<span id="cb5-29"><a></a><span class="op">}</span></span>
+<span id="cb5-30"><a></a>Stmt<span class="op">*</span> Reverse <span class="op">=</span></span>
+<span id="cb5-31"><a></a>    CLAD_COMPAT_CLANG19_SemaOpenMP<span class="op">(</span><span class="va">m_Sema</span><span class="op">)</span></span>
+<span id="cb5-32"><a></a>        <span class="op">.</span>ActOnOpenMPRegionEnd<span class="op">(</span>BodyDiff<span class="op">.</span>getStmt_dx<span class="op">(),</span> DiffClauses<span class="op">)</span></span>
+<span id="cb5-33"><a></a>        <span class="op">.</span>get<span class="op">();</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
 </section>
 <section id="reverse-mode-scope-conversion" class="slide level2">
 <h2>Reverse Mode — Scope conversion</h2>
@@ -355,42 +392,42 @@
 </ul>
 </div>
 <div style="font-size: 85%;">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb5-1"><a></a><span class="dt">void</span> clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dt">int</span> lo<span class="op">,</span> <span class="dt">int</span> hi<span class="op">,</span> <span class="dt">int</span> stride<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadlo<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadhi<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a></a><span class="dt">void</span> clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dt">int</span> lo<span class="op">,</span> <span class="dt">int</span> hi<span class="op">,</span> <span class="dt">int</span> stride<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadlo<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadhi<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="reverse-mode-1641" class="slide level2">
 <h2>Reverse Mode (<a href="https://github.com/vgvassilev/clad/pull/1641">#1641</a>)</h2>
 <p>The resulting generated code:</p>
 <div style="font-size: 90%;">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a></a><span class="co">// auto fn_grad = clad::gradient(parallel_sum_of_squares);</span></span>
-<span id="cb6-2"><a></a><span class="co">// fn_grad.dump();</span></span>
-<span id="cb6-3"><a></a><span class="dt">void</span> parallel_sum_of_squares_grad<span class="op">(</span><span class="at">const</span> <span class="dt">double</span> <span class="op">*</span>x<span class="op">,</span> <span class="dt">int</span> n<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>_d_x<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>_d_n<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb6-4"><a></a>    <span class="dt">double</span> _d_total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
-<span id="cb6-5"><a></a>    <span class="dt">double</span> total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
-<span id="cb6-6"><a></a>    <span class="pp">#pragma omp parallel reduction(+: total)</span></span>
-<span id="cb6-7"><a></a>        <span class="op">{</span></span>
-<span id="cb6-8"><a></a>            <span class="dt">int</span> _t_chunklo0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb6-9"><a></a>            <span class="dt">int</span> _t_chunkhi0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb6-10"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo0<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi0<span class="op">);</span></span>
-<span id="cb6-11"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunklo0<span class="op">;</span> i <span class="op">&lt;=</span> _t_chunkhi0<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
-<span id="cb6-12"><a></a>                total <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
-<span id="cb6-13"><a></a>            <span class="op">}</span></span>
-<span id="cb6-14"><a></a>        <span class="op">}</span></span>
-<span id="cb6-15"><a></a>    _d_total <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb6-16"><a></a>    <span class="pp">#pragma omp parallel private(total) firstprivate(_d_total)</span></span>
-<span id="cb6-17"><a></a>        <span class="op">{</span></span>
-<span id="cb6-18"><a></a>            <span class="dt">int</span> _t_chunklo1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb6-19"><a></a>            <span class="dt">int</span> _t_chunkhi1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb6-20"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo1<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi1<span class="op">);</span></span>
-<span id="cb6-21"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunkhi1<span class="op">;</span> i <span class="op">&gt;=</span> _t_chunklo1<span class="op">;</span> i <span class="op">-=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
-<span id="cb6-22"><a></a>                <span class="op">{</span></span>
-<span id="cb6-23"><a></a>                    <span class="dt">double</span> _r_d0 <span class="op">=</span> _d_total<span class="op">;</span></span>
-<span id="cb6-24"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> _r_d0 <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
-<span id="cb6-25"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> _r_d0<span class="op">;</span></span>
-<span id="cb6-26"><a></a>                <span class="op">}</span></span>
-<span id="cb6-27"><a></a>            <span class="op">}</span></span>
-<span id="cb6-28"><a></a>        <span class="op">}</span></span>
-<span id="cb6-29"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb7-1"><a></a><span class="co">// auto fn_grad = clad::gradient(parallel_sum_of_squares);</span></span>
+<span id="cb7-2"><a></a><span class="co">// fn_grad.dump();</span></span>
+<span id="cb7-3"><a></a><span class="dt">void</span> parallel_sum_of_squares_grad<span class="op">(</span><span class="at">const</span> <span class="dt">double</span> <span class="op">*</span>x<span class="op">,</span> <span class="dt">int</span> n<span class="op">,</span> <span class="dt">double</span> <span class="op">*</span>_d_x<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>_d_n<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-4"><a></a>    <span class="dt">double</span> _d_total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
+<span id="cb7-5"><a></a>    <span class="dt">double</span> total <span class="op">=</span> <span class="fl">0.</span><span class="op">;</span></span>
+<span id="cb7-6"><a></a>    <span class="pp">#pragma omp parallel reduction(+: total)</span></span>
+<span id="cb7-7"><a></a>        <span class="op">{</span></span>
+<span id="cb7-8"><a></a>            <span class="dt">int</span> _t_chunklo0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb7-9"><a></a>            <span class="dt">int</span> _t_chunkhi0 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb7-10"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo0<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi0<span class="op">);</span></span>
+<span id="cb7-11"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunklo0<span class="op">;</span> i <span class="op">&lt;=</span> _t_chunkhi0<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-12"><a></a>                total <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb7-13"><a></a>            <span class="op">}</span></span>
+<span id="cb7-14"><a></a>        <span class="op">}</span></span>
+<span id="cb7-15"><a></a>    _d_total <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb7-16"><a></a>    <span class="pp">#pragma omp parallel private(total) firstprivate(_d_total)</span></span>
+<span id="cb7-17"><a></a>        <span class="op">{</span></span>
+<span id="cb7-18"><a></a>            <span class="dt">int</span> _t_chunklo1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb7-19"><a></a>            <span class="dt">int</span> _t_chunkhi1 <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb7-20"><a></a>            clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dv">0</span><span class="op">,</span> n <span class="op">-</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="op">&amp;</span>_t_chunklo1<span class="op">,</span> <span class="op">&amp;</span>_t_chunkhi1<span class="op">);</span></span>
+<span id="cb7-21"><a></a>            <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> _t_chunkhi1<span class="op">;</span> i <span class="op">&gt;=</span> _t_chunklo1<span class="op">;</span> i <span class="op">-=</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-22"><a></a>                <span class="op">{</span></span>
+<span id="cb7-23"><a></a>                    <span class="dt">double</span> _r_d0 <span class="op">=</span> _d_total<span class="op">;</span></span>
+<span id="cb7-24"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> _r_d0 <span class="op">*</span> x<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb7-25"><a></a>                    _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> _r_d0<span class="op">;</span></span>
+<span id="cb7-26"><a></a>                <span class="op">}</span></span>
+<span id="cb7-27"><a></a>            <span class="op">}</span></span>
+<span id="cb7-28"><a></a>        <span class="op">}</span></span>
+<span id="cb7-29"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="future-work" class="slide level2">

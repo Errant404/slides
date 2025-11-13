@@ -56,18 +56,18 @@
     "text": "Forward Mode (#1491)\n\n\nSince the execution order of the forward-mode derivatives is consistent with that of the original code, the scopes of the differentiated variables can be directly inherited from the original variables, and the parallel structure of the entire program can also be reused.\nFor the previous example, the actually generated code looks like this:\n\n\n\n// auto d_fn_arr = clad::differentiate(parallel_sum_of_squares, \"x[1]\");\n// d_fn_arr.dump();\ndouble parallel_sum_of_squares_darg0_1(const double *x, int n) {\n    int _d_n = 0;\n    double _d_total = 0.;\n    double total = 0.;\n    #pragma omp parallel for reduction(+: _d_total,total)\n        for (int i = 0; i &lt; n; i++) {\n            _d_total += (i == 1) * x[i] + x[i] * (i == 1);\n            total += x[i] * x[i];\n        }\n    return _d_total;\n}"
   },
   {
-    "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations",
-    "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations",
+    "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast",
+    "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast",
     "title": "Errant's Slides",
-    "section": "Reverse Mode — Clang AST transformations",
-    "text": "Reverse Mode — Clang AST transformations\n\n\nThe previous VisitForStmt method was too invasive for omp for; we implement a dedicated DifferentiateCanonicalLoop for OpenMP loops.\n\n\n\n// auto fn_grad = clad::gradient(sum_of_squares);\n// fn_grad.dump();\nvoid sum_of_squares_grad(const double *x, int n, double *_d_x, int *_d_n) {\n    int _d_i = 0;\n    int i = 0;\n    double _d_total = 0.;\n    double total = 0.;\n    unsigned long _t0 = 0;\n    for (i = 0; i &lt; n; i++) {\n        _t0++;\n        total += x[i] * x[i];\n    }\n    _d_total += 1;\n    for (; _t0; _t0--) {\n        i--;\n        {\n            double _r_d0 = _d_total;\n            _d_x[i] += _r_d0 * x[i];\n            _d_x[i] += x[i] * _r_d0;\n        }\n    }\n}"
+    "section": "Reverse Mode — Clang AST",
+    "text": "Reverse Mode — Clang AST\n\n\nThe previous VisitForStmt method was too invasive for omp for; we implement a dedicated DifferentiateCanonicalLoop for OpenMP loops.\n\n\n\n// auto fn_grad = clad::gradient(sum_of_squares);\n// fn_grad.dump();\nvoid sum_of_squares_grad(const double *x, int n, double *_d_x, int *_d_n) {\n    int _d_i = 0;\n    int i = 0;\n    double _d_total = 0.;\n    double total = 0.;\n    unsigned long _t0 = 0;\n    for (i = 0; i &lt; n; i++) {\n        _t0++;\n        total += x[i] * x[i];\n    }\n    _d_total += 1;\n    for (; _t0; _t0--) {\n        i--;\n        {\n            double _r_d0 = _d_total;\n            _d_x[i] += _r_d0 * x[i];\n            _d_x[i] += x[i] * _r_d0;\n        }\n    }\n}"
   },
   {
-    "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations-1",
-    "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-transformations-1",
+    "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-1",
+    "href": "2025-11-13-gsoc25-clad/index.html#reverse-mode-clang-ast-1",
     "title": "Errant's Slides",
-    "section": "Reverse Mode — Clang AST transformations",
-    "text": "Reverse Mode — Clang AST transformations\n\nIt should be noted that, for Clang’s OpenMP implementation, we need to capture the related variables when building DeclRefExpr (which corresponds to the CaptureStmt’s subnodes in the Clang AST).\nSo we also need visit twice to generate two OpenMP regions and their capture lists: one for the forward pass, one for the reverse pass."
+    "section": "Reverse Mode — Clang AST",
+    "text": "Reverse Mode — Clang AST\n\n\nIt should be noted that, for Clang’s OpenMP implementation, we need to capture the related variables when building DeclRefExpr (which corresponds to the CaptureStmt’s subnodes in the Clang AST).\nSo we also need visit twice to generate two OpenMP regions and their capture lists: one for the forward pass, one for the reverse pass.\n\n\n\nCLAD_COMPAT_CLANG19_SemaOpenMP(m_Sema).ActOnOpenMPRegionStart(OMPD_parallel, nullptr);\nStmtDiff BodyDiff;\n{\n    Sema::CompoundScopeRAII CompoundScope(m_Sema);\n    if (isOpenMPLoopDirective(D-&gt;getDirectiveKind())) {\n        const auto* FS = cast&lt;ForStmt&gt;(CS);\n        BodyDiff = DifferentiateCanonicalLoop(FS);\n    } else {\n        BodyDiff = Visit(CS);\n    }\n}\nStmt* Forward = CLAD_COMPAT_CLANG19_SemaOpenMP(m_Sema)\n                    .ActOnOpenMPRegionEnd(BodyDiff.getStmt(), OrigClauses)\n                    .get();\n\nCLAD_COMPAT_CLANG19_SemaOpenMP(m_Sema).ActOnOpenMPRegionStart(OMPD_parallel, nullptr);\n// Visit twice, but use only the result of the first visit, for capture variables only.\n{\n    Sema::CompoundScopeRAII CompoundScope(m_Sema);\n    Stmts temp;\n    m_Globals.swap(temp);\n    if (isOpenMPLoopDirective(D-&gt;getDirectiveKind())) {\n        const auto* FS = cast&lt;ForStmt&gt;(CS);\n        DifferentiateCanonicalLoop(FS);\n    } else {\n        Visit(CS);\n    }\n    m_Globals.swap(temp);\n}\nStmt* Reverse =\n    CLAD_COMPAT_CLANG19_SemaOpenMP(m_Sema)\n        .ActOnOpenMPRegionEnd(BodyDiff.getStmt_dx(), DiffClauses)\n        .get();"
   },
   {
     "objectID": "2025-11-13-gsoc25-clad/index.html#reverse-mode-scope-conversion",
