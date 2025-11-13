@@ -18,7 +18,7 @@
     "href": "2025-11-13-gsoc25-clad/index.html#background",
     "title": "Errant's Slides",
     "section": "Background",
-    "text": "Background\n\n\n\n\n\nWhat is Automatic Differentiation (AD)?\nExact derivatives by transforming programs; no finite-difference error; supports forward and reverse.\nWhat is OpenMP?\nPragmas for shared-memory parallelism (parallel, for, reduction, etc.).\nWhat is Clad?\nSource-transformation AD for C/C++ based on Clang plugin; emits forward/reverse derivatives."
+    "text": "Background\n\n\n\n\n\nWhat is Automatic Differentiation (AD)?\nExact derivatives by transforming programs; no finite-difference error; supports forward and reverse.\nWhat is OpenMP?\nPragmas for shared-memory parallelism (parallel, for, reduction, etc.).\nWhat is Clad?\nSource-transformation AD library for C++ implemented as a plugin for Clang"
   },
   {
     "objectID": "2025-11-13-gsoc25-clad/index.html#case-study",
@@ -95,7 +95,7 @@
     "href": "2025-11-13-gsoc25-clad/index.html#future-work",
     "title": "Errant's Slides",
     "section": "Future Work",
-    "text": "Future Work\n\nSupport dynamic schedules (record executed chunks at runtime and replay).\nSupport more OpenMP clauses and directives.\nWe can even enable OpenMP offloading to target accelerators (e.g., GPUs)."
+    "text": "Future Work\n\nSupport dynamic schedules (record executed chunks at runtime and replay).\nSupport more OpenMP clauses and directives (atomic, simd, etc.).\nWe can even try to enable OpenMP offloading to target accelerators (e.g., GPUs)."
   },
   {
     "objectID": "list.html",
