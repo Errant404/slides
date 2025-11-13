@@ -201,6 +201,21 @@
 <div style="font-size: 50%;">
 <p>Click <a href="https://blog.errant.top/slides/2025-11-13-gsoc25-clad">here</a> to view the HTML version of the slides.</p>
 </div>
+<aside class="notes">
+<p>Hello everyone, my name is <strong>Jiayang Li</strong>.</p>
+<p>Today, I’ll be presenting my project <strong>“Enable Automatic Differentiation of OpenMP Programs with Clad”</strong>, which focuses on enabling automatic differentiation for OpenMP programs within the Clad framework.</p>
+<p>If you’d like to view the slides online, you can click the link shown on the slide.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 
 <section id="background" class="slide level2">
@@ -219,6 +234,23 @@
 </ul>
 </div>
 </div></div>
+<aside class="notes">
+<p>Let’s start with some background.</p>
+<p>First, <strong>what is Automatic Differentiation (AD)</strong>? Automatic Differentiation is a method of obtaining <strong>exact derivatives through program transformation</strong>. Unlike symbolic or numerical differentiation, it has no rounding errors or instability, and it supports both <strong>forward mode</strong> and <strong>reverse mode</strong> differentiation.</p>
+<p>Next, <strong>what is OpenMP</strong>? OpenMP is a widely used parallel programming interface for C, C++, and Fortran. It enables shared-memory parallelism through <code>#pragma omp</code> directives such as <code>parallel</code>, <code>for</code>, and <code>reduction</code>.</p>
+<p>Finally, <strong>what is Clad</strong>? Clad is a source-transformation automatic differentiation plugin for <strong>Clang</strong>. It works directly on the <strong>Clang Abstract Syntax Tree (AST)</strong> to generate derivative code. In other words, it performs “compile-time automatic differentiation,” producing exact source-level transformations for C++ functions.</p>
+<p>The goal of this project, as illustrated on the right, is to apply automatic differentiation to functions annotated with OpenMP directives — so that the generated derivative code is also parallelized, achieving acceleration through parallel computation.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="case-study" class="slide level2" data-auto-animate="true">
 <h2 data-id="quarto-animate-title">Case Study</h2>
@@ -231,6 +263,19 @@
 <span id="cb1-6" class="hljs-ln-code"><a></a>    <span class="op">}</span></span>
 <span id="cb1-7" class="hljs-ln-code"><a></a>    <span class="cf">return</span> total<span class="op">;</span></span>
 <span id="cb1-8" class="hljs-ln-code"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<aside class="notes">
+<p>Let’s start with a simple OpenMP example. This function <code>parallel_sum_of_squares</code> computes the sum of squares of all elements in an array. It parallelizes the loop using <code>#pragma omp parallel for reduction(+: total)</code>.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="case-study-1" class="slide level2" data-auto-animate="true">
 <h2 data-id="quarto-animate-title">Case Study</h2>
@@ -250,18 +295,57 @@
 <span id="cb2-13" class="hljs-ln-code"><a></a>        _d_x<span class="op">[</span>i<span class="op">]</span> <span class="op">+=</span> x<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> _r_d0<span class="op">;</span></span>
 <span id="cb2-14" class="hljs-ln-code"><a></a>    <span class="op">}</span></span>
 <span id="cb2-15" class="hljs-ln-code"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<aside class="notes">
+<p>Now, we’d like to obtain its <strong>reverse-mode gradient</strong>. Conceptually, we want to automatically generate an equivalent reverse-mode function. The slide shows a conceptual example, and you can see that:</p>
+<ul>
+<li>We first perform the same forward loop as in the original function.</li>
+<li>Then, we initialize the derivative of the result variable <code>total</code> (i.e., <code>_d_total</code>) to 1.</li>
+<li>Finally, in the reverse loop, we accumulate the gradients for each element <code>x[i]</code>.</li>
+</ul>
+<p>Is that correct? Almost — but there are still some subtleties and implementation details to handle, which we’ll look into next. The basic idea, however, is already quite close.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="technical-challenges" class="slide level2">
 <h2>Technical Challenges</h2>
 
 <img data-src="./thread-stack-matters.svg" class="quarto-figure quarto-figure-center r-stretch"><div style="font-size: 67%;">
 <ul>
-<li>Clang AST specifics for OpenMP (building nodes, capture variables, clause handling)</li>
+<li>Clang AST specifics for OpenMP (building AST nodes, capture variables, clause handling)</li>
 <li>Variable scoping across OpenMP regions and clauses</li>
 <li>Thread-safe storage for tapes/intermediates</li>
 <li>Deterministic schedule reversal for the reverse pass</li>
 </ul>
 </div>
+<aside class="notes">
+<p>There are several core challenges here:</p>
+<ol type="1">
+<li><strong>Complexity of OpenMP nodes in the Clang AST</strong> We need to correctly build and capture variables within parallel regions and handle different OpenMP clauses.</li>
+<li><strong>Variable scoping</strong> Each thread in an OpenMP region has its own private variables, and we must ensure these are properly matched between the forward and reverse passes.</li>
+<li><strong>Thread-safe storage of intermediates</strong> Reverse-mode AD requires saving intermediate values (so-called “tapes”), and these must be thread-safe.</li>
+<li><strong>Deterministic schedule reversal</strong> We must guarantee that during the reverse pass, each thread’s iteration chunk is identical to that in the forward pass.</li>
+</ol>
+<p>The diagram above shows the data dependencies between intermediate results. Each thread maintains its own stack. The key is that the same thread must perform the corresponding forward and reverse iterations — in reverse order — to ensure that data is popped correctly from its local stack.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="implementation-overview" class="slide level2">
 <h2>Implementation Overview</h2>
@@ -274,6 +358,21 @@
 <div style="text-align: center;">
 <iframe src="https://godbolt.org/z/ETvY8x4Wh" width="1400" height="370" frameborder="0" allowfullscreen=""></iframe>
 </div>
+<aside class="notes">
+<p>For implementation, we took inspiration from the <strong>Tapenade</strong> team’s paper (linked in the slides). Tapenade has already implemented OpenMP automatic differentiation for Fortran and provides solid theoretical foundations.</p>
+<p>Our approach in Clad is similar. Since OpenMP constructs are represented as specific AST nodes in Clang, we only need to extend the corresponding <code>Visit</code> methods in the AST visitor to produce differentiated versions. In other words, we reuse Clang’s AST mechanisms so that Clad can correctly identify and reconstruct OpenMP statements.</p>
+<p>The slide also links to a <a href="https://godbolt.org/z/ETvY8x4Wh">Compiler Explorer example</a>, where we can see the actual OpenMP AST structure — including a node type called <code>CapturedStmt</code>, which represents captured variables in a parallel region.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="forward-mode-1491" class="slide level2">
 <h2>Forward Mode (<a href="https://github.com/vgvassilev/clad/pull/1491">#1491</a>)</h2>
@@ -298,6 +397,25 @@
 <span id="cb3-12"><a></a>    <span class="cf">return</span> _d_total<span class="op">;</span></span>
 <span id="cb3-13"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<aside class="notes">
+<p>I already presented the Forward Mode implementation during the midterm evaluation. Forward mode is relatively straightforward because its execution order matches the original program. Therefore, we can directly reuse the same parallel structure, with identical variable scopes.</p>
+<p>In this example, the generated forward-mode code is shown below. You can see that:</p>
+<ul>
+<li>Both <code>total</code> and <code>_d_total</code> appear in the same parallel region.</li>
+<li>We simply add an additional reduction clause <code>reduction(+: _d_total, total)</code> to accumulate the derivatives.</li>
+</ul>
+<p>The structure is almost identical to the original function, making it very intuitive.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="reverse-mode-clang-ast" class="slide level2">
 <h2>Reverse Mode — Clang AST</h2>
@@ -330,6 +448,20 @@
 <span id="cb4-21"><a></a>    <span class="op">}</span></span>
 <span id="cb4-22"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<aside class="notes">
+<p>Reverse mode, however, is much more complex. We can’t just modify the existing <code>VisitForStmt</code>, because its loop counter is embedded within the loop and the generated <code>ForStmt</code> cannot be correctly divided among threads.</p>
+<p>Therefore, we introduced a new helper function called <code>DifferentiateCanonicalLoop</code>, which specifically handles OpenMP loops and returns a canonical <code>ForStmt</code> suitable for OpenMP task partitioning and scheduling.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="reverse-mode-clang-ast-1" class="slide level2 scrollable">
 <h2>Reverse Mode — Clang AST</h2>
@@ -374,17 +506,46 @@
 <span id="cb5-32"><a></a>        <span class="op">.</span>ActOnOpenMPRegionEnd<span class="op">(</span>BodyDiff<span class="op">.</span>getStmt_dx<span class="op">(),</span> DiffClauses<span class="op">)</span></span>
 <span id="cb5-33"><a></a>        <span class="op">.</span>get<span class="op">();</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<aside class="notes">
+<p>In Clang’s OpenMP implementation, each parallel region uses a <strong>CapturedStmt</strong> to capture external variables. Thus, when constructing the AST for the reverse pass, we must traverse twice: once to generate the forward region and its capture list, and again to generate the reverse region and its capture list.</p>
+<p>This ensures that each OpenMP region has the correct variable context.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="reverse-mode-scope-conversion" class="slide level2">
 <h2>Reverse Mode — Scope conversion</h2>
 
-<img data-src="./scope-convert.svg" class="r-stretch quarto-figure quarto-figure-center"></section>
+<img data-src="./scope-convert.svg" class="r-stretch quarto-figure quarto-figure-center"><aside class="notes">
+<p>This diagram shows how scope conversion works. In short, Clad maps variables from each scope in the forward pass to the corresponding scope in the reverse pass. This mapping is especially important in OpenMP, where we distinguish between <code>private</code>, <code>shared</code>, and <code>firstprivate</code> variables.</p>
+<p>The example shows a loop with 9 iterations (represented as boxes with iteration numbers), parallelized with two threads and a hypothetical scheduling scheme assigning two iteration chunks per thread. In the multithreaded view, colors represent thread assignment, arrows indicate data flow, and the markers denote variable creation, zero initialization, or accumulation operations. The top half shows the behavior of the original and tangent (forward) modes, while the bottom half shows the adjoint (reverse) behavior.</p>
+<p>The paper provides detailed theoretical proofs of correctness, which I won’t cover here.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
 <section id="reverse-mode-intermediates-and-schedule-replay" class="slide level2">
 <h2>Reverse Mode — Intermediates and schedule replay</h2>
 <div style="font-size: 70%;">
 <ul>
 <li>Intermediates require tapes; the tape itself must become private to each thread; so we make these threadprivate.</li>
-<li>For data consistency, we must ensure that the parallel scheduling of the backward propagation strictly reproduces the thread–task allocation of the forward propagation. To achieve this, we reverse the schedule while preserving chunk boundaries by a small runtime helper:
+<li>For data consistency, we must ensure that the parallel scheduling of the backward pass strictly reproduces the thread–task allocation of the forward pass. To achieve this, we reverse the schedule while preserving chunk boundaries by a small runtime helper:
 <ul>
 <li>Forward pass: each thread computes its static chunk from thread ID and executes normally.</li>
 <li>Reverse pass: the same helper returns identical chunks, then we iterate the chunk in reverse order.</li>
@@ -394,6 +555,20 @@
 <div style="font-size: 85%;">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode numberSource cpp number-lines code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a></a><span class="dt">void</span> clad<span class="op">::</span>GetStaticSchedule<span class="op">(</span><span class="dt">int</span> lo<span class="op">,</span> <span class="dt">int</span> hi<span class="op">,</span> <span class="dt">int</span> stride<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadlo<span class="op">,</span> <span class="dt">int</span><span class="op">*</span> threadhi<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<aside class="notes">
+<p>Another key issue is <strong>schedule replay</strong>. Since OpenMP loop scheduling is often static, we can compute each thread’s iteration range using a small runtime helper: <code>clad::GetStaticSchedule</code>.</p>
+<p>During the reverse pass, we call the same helper again to obtain the same chunk boundaries and then iterate them in reverse order. This ensures that each thread precisely “replays” its original forward work during the backward pass, maintaining consistency at the thread level.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="reverse-mode-1641" class="slide level2">
 <h2>Reverse Mode (<a href="https://github.com/vgvassilev/clad/pull/1641">#1641</a>)</h2>
@@ -429,6 +604,26 @@
 <span id="cb7-28"><a></a>        <span class="op">}</span></span>
 <span id="cb7-29"><a></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<aside class="notes">
+<p>Finally, this slide shows the complete generated reverse-mode code. As you can see:</p>
+<ul>
+<li>The forward pass and backward pass are placed in two separate parallel regions.</li>
+<li>The <code>GetStaticSchedule</code> helper ensures identical chunk boundaries.</li>
+<li>Each thread iterates its chunk in reverse during the backward pass.</li>
+<li>Gradients for each element <code>x[i]</code> are accumulated into <code>_d_x[i]</code>.</li>
+</ul>
+<p>The structure fully matches the theoretical expectation and works correctly under multithreaded execution.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="future-work" class="slide level2">
 <h2>Future Work</h2>
@@ -437,12 +632,42 @@
 <li><p>Support more OpenMP clauses and directives (atomic, simd, etc.).</p>
 <p>We can even try to enable OpenMP offloading to target accelerators (e.g., GPUs).</p></li>
 </ul>
+<aside class="notes">
+<p>For future improvements:</p>
+<ol type="1">
+<li><strong>Support dynamic scheduling</strong> For dynamically scheduled loops, we’ll need to record the executed chunks at runtime and replay them during the backward pass.</li>
+<li><strong>Support additional OpenMP clauses and directives</strong> Such as <code>atomic</code>, <code>simd</code>, and potentially <strong>OpenMP target offloading</strong>, enabling automatic differentiation on accelerators like GPUs.</li>
+</ol>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
 <section id="thank-you" class="title-slide slide level1 center" style="text-align: center;">
 <h1>Thank You!</h1>
 <p>Q &amp; A</p>
 </section>
 
+<aside class="notes">
+<p>That concludes my presentation — thank you for your attention! I’ll be happy to take any questions.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 
 
     </div>
